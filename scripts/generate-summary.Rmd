@@ -1,0 +1,184 @@
+---
+title: "`r thetitle`"
+date: "`r Sys.Date()`"
+output: 
+  html_document
+    
+params:
+  all_seq_table_csv: ""
+---
+<style>
+
+  #table-of-contents h2 {
+    z-index: 200;
+    background-color: #339966;
+    text-align: center;
+    padding: 0.809em;
+    display: block;
+    color: #fcfcfc;
+    font-size: 100%;
+    margin-top: 0px;
+    margin-bottom: 0.809em;
+  }
+
+  h1, h2, h3, h4, h5, h6, legend {
+    font-family: "Roboto Slab","ff-tisa-web-pro","Georgia",Arial,sans-serif;
+    font-weight: 700;
+    color: #339966;
+  }
+  
+  #content {
+    max-width: 100%;
+  }
+  
+  .container-fluid.main-container {
+    max-width: 100%;
+  }
+  
+  .dataTables_length {
+    padding: 10px;
+  }
+  
+  
+</style>
+
+
+``` {r functions, include = FALSE}
+library("knitr")
+library("shiny")
+library("DT")
+library("tidyverse")
+library("plotly")
+
+all.seq.table = read.csv(params$all_seq_table_csv, stringsAsFactors = FALSE)
+all.seq.table$classification = toupper(all.seq.table$classification)
+
+if (max(all.seq.table$steps)=="6") {
+  all.seq.table = subset(all.seq.table, chosen=="1")
+}
+
+all.seq.table$chosen = NULL
+
+
+```
+
+
+## Assemblies description
+
+```{r donut_chart_one, echo=FALSE}
+colors <- c(GOOD = 'rgb(0,128,255)', BAD = 'rgb(204,0,0)', `EMPTY WELL` = 'rgb(255,255,255)', PROBLEMS_IN_ASSEMBLY = 'rgb(102,0,0)')
+colors_classif <- c(non_functional = 'rgb(255,255,255)', missing_ltr_or_psi = 'rgb(204,0,0)', intact = 'rgb(0,153,0)', msd_mutation = 'rgb(255,128,0)', duplications_or_inversion = 'rgb(153,41,255)', missing_internal_genes = 'rgb(160,160,160)')
+
+data1 <- all.seq.table %>%
+  group_by(classification) %>%
+  summarize(count = n())
+
+p1 <- plot_ly()  %>%
+  add_pie(data = data1, hole = 0.6, labels = ~classification, values = ~count, marker = list(colors = colors[as.character(data1$classification)], line = list(color = '#000000', width = 1)) ) %>%
+  # add_annotations(text = "Assemblies", x = 0.5, y = 1, yref = 'paper', xref = "x1", showarrow = FALSE, font = list(size = 15)) %>%
+  add_annotations(text = ~ paste0('<b>', sum(data1$count), '</b>'), x = 0.5, y = 0.5, yref = "paper", xref = "x1", showarrow = FALSE, font = list(size = 40, color = toRGB("black") )) %>%
+  layout(legend = list(orientation = "h", xanchor = "center", x = 0.5),
+         showlegend = TRUE,
+         title = list(text=sprintf("<b>%s</b>", "Assemblies") ),
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE)
+  ) 
+
+if (max(all.seq.table$steps) == "6") {
+  
+  data2 <- all.seq.table %>% 
+    filter(classification == "GOOD") %>%
+    group_by(final_classification) %>%
+    summarize(count = n())
+  
+  p2 <- plot_ly()  %>%
+    add_pie(data = data2, hole = 0.6, labels = ~final_classification, values = ~count, marker = list(colors = colors_classif[as.character(data2$final_classification)], line = list(color = '#000000', width = 1)) ) %>%
+    # add_annotations(text = "Good Assemblies Classification", x = 0.5, y = 1, yref = "paper", xref = "x1", showarrow = FALSE, font = list(size = 15) ) %>%
+    add_annotations(text = ~ paste0('<b>', sum(data2$count), '</b>'), x = 0.5, y = 0.5, yref = "paper", xref = "x1", showarrow = FALSE, font = list(size = 40, color = toRGB("black") )) %>%
+    layout(legend = list(orientation = "h", xanchor = "center", x = 0.5),
+           showlegend = TRUE,
+           title = list(text=sprintf("<b>%s</b>", "Good Assemblies Classification") ),
+           xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+           yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE)
+    )
+  
+
+  
+  fluidPage(
+    fluidRow(
+      column(4, p1), column(4, offset=3, p2)
+    )
+  )
+  
+} else {
+  
+  fluidPage(
+    fluidRow(
+      column(4, p1)
+    )
+  )
+  
+}
+
+```
+
+
+
+
+## Assemblies summary
+Click on CSV or Excel to download the table.
+
+```{r summary_passed, echo = FALSE, message = FALSE, warning=FALSE}
+
+assemblies.summary.table = subset(all.seq.table, classification %in% c("GOOD","BAD"))
+
+datatable(assemblies.summary.table,  
+          extensions = 'Buttons',
+          options = list( searching = TRUE, 
+                          pageLength = 5, 
+                          lengthMenu = c(5, 10, 15, 20), 
+                          scrollX = TRUE, 
+                          dom = 'Bfrtipl', 
+                          buttons = c('csv', 'excel')
+                          )
+          )
+
+```
+
+## Problems in assembly
+``` {r summary_failed_assembly, echo = FALSE}
+
+problems.in.assembly.table = subset(all.seq.table, classification == "PROBLEMS_IN_ASSEMBLY")
+
+datatable(problems.in.assembly.table, 
+          extensions = 'Buttons',
+          options = list( searching = TRUE, 
+                          pageLength = 5, 
+                          lengthMenu = c(5, 10, 15, 20), 
+                          scrollX = TRUE, 
+                          dom = 'Bfrtipl', 
+                          buttons = c('csv', 'excel')
+                          )
+          )
+```
+
+## Empty wells summary
+
+``` {r summary_failed, echo = FALSE}
+
+empty.wells.table = subset(all.seq.table, classification=="EMPTY WELL")
+
+datatable(empty.wells.table, 
+          extensions = 'Buttons',
+          options = list( searching = TRUE, 
+                          pageLength = 5, 
+                          lengthMenu = c(5, 10, 15, 20), 
+                          scrollX = TRUE, 
+                          dom = 'Bfrtipl', 
+                          buttons = c('csv', 'excel')
+                          )
+          )
+```
+
+
+
