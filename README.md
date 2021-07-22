@@ -39,7 +39,12 @@ When the installation finishes, Docker starts automatically. The whale ![](img/i
 Once Docker is installed, download the image containing the DIHIVA on https://hub.docker.com/r/victoorramos/dihiva
 ![](img/dockerhub_dihiva_frontpage.png "")  
 
-Open up a terminal session and download the image using the command **docker pull victoorramos/dihiva**  
+Open up a terminal session and download the image using the command
+
+```
+docker pull victoorramos/dihiva
+```
+
 ![](img/dihiva_docker_pull.png "")  
 
 
@@ -47,9 +52,11 @@ Open up a terminal session and download the image using the command **docker pul
 
 ### Step 1
 
-In Desktop, create a folder named "dihiva_results" and type the following command to start the Shiny application and make it accessible through the port 7524 ( The user may choose any other port that is not being used and map it in the command below ) .
+In Desktop, create a folder named "dihiva_results" and type the following command to start the Shiny application and make it accessible through the port 7524 ( The user may choose any other port that is not being used and map it in the command below ).
 
-**docker run -it -p 7524:8888 -v ~/Desktop/dihiva_results/:/dihiva/dihiva_analysis victoorramos/dihiva:latest /bin/bash -c "R -e 'shiny::runApp("'"/dihiva/DIHIVAInterface"'", port=8888, host="'"0.0.0.0"'")' " **
+```
+docker run -it -p 7524:8888 -v ~/Desktop/dihiva_results/:/dihiva/dihiva_analysis victoorramos/dihiva:latest /bin/bash -c "R -e 'shiny::runApp("'"/dihiva/DIHIVAInterface"'", port=8888, host="'"0.0.0.0"'")'" 
+```
 
 ![](img/exec_dihiva_shiny.png "")  
 
@@ -90,17 +97,27 @@ In Desktop, create a folder named "dihiva_results". Inside it, create a folder w
 
 ### Step 2
 
-Execute docker on interactive mode with the following command: docker run -it -v  ~/Desktop/dihiva_results/:/dihiva/dihiva_analysis victoorramos/dihiva:latest
+Execute docker on interactive mode with the following command: 
+```
+docker run -it -v  ~/Desktop/dihiva_results/:/dihiva/dihiva_analysis victoorramos/dihiva:latest
+```
 
 ### Step 3
 
-Enter the directory previously created inside 'dihiva_analysis' and execute the command 'setup_hiv_loca.sh .' to create symbolic links of all files the pipeline needs to be executed.
+Enter the directory previously created inside 'dihiva_analysis' and execute the command:
+```
+setup_hiv_loca.sh .
+```
+The command above will create symbolic links to all files the pipeline needs to be executed.
 
 ![](img/cmd_structure_2.png "")  
 
 ### Step 4
 
-Execute the pipeline with the command ./run_local_no_cluster.sh <number_of_cores> <analysis_name> <ram_mem_allocation>
+Execute the pipeline with the command:
+```
+./run_local_no_cluster.sh <number_of_cores> <analysis_name> <ram_mem_allocation>
+```
 
 Mem allocation should be provided in Mb. For example 10GB should be passed as 10000
 
