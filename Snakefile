@@ -42,13 +42,14 @@ rule move_files_and_generate_summary:
         step_six(OUTPUTDIR + '/STEP6/JSON_STEP6.json')
     output:
         output_one = CWD + '/' + OUTPUTDIR + '/STEP7/summary.html',
-        output_two = CWD + '/' + OUTPUTDIR + '/STEP7/all_seq_table.csv'
+        output_two = CWD + '/' + OUTPUTDIR + '/STEP7/all_seq_table.csv',
+        tmpdir = temp(directory(CWD + '/' + OUTPUTDIR + '/STEP7/.tmp'))
     params:
         json_merged = CWD + '/' + OUTPUTDIR + '/STEP7/MergedJSON.json'
     shell:
         """
             PERL5LIB=$PERL5LIB:$PWD/scripts/lib scripts/HIVAtoolkit.pl merge_all_json --results_dir results --jsonfile {params.json_merged} > {output.output_two}
 
-            Rscript -e " thetitle='DIHIVA Report'; rmarkdown::render('scripts/generate-summary.Rmd', params=list(all_seq_table_csv = '{output.output_two}' ), output_file = '{output.output_one}')  "
+            Rscript -e " thetitle='DIHIVA Report'; rmarkdown::render('scripts/generate-summary.Rmd', params=list(all_seq_table_csv = '{output.output_two}' ), output_file = '{output.output_one}', intermediates_dir = '{output.tmpdir}')  "
         """
 
