@@ -707,57 +707,44 @@ use File::Path 'make_path';
 
         my ( $self, $json_report_hash ) = @_;
 
-        #$json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step}{ 'seq_length' } = $self->genbank->length;
         $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step}{ 'output' } = $self->json_file->stringify;
 
         foreach my $sample_id ( keys %{ $json_report_hash->{'passed'}} ) {
+
+            my @productive_genes;
+            my @unproductive_genes;
+            my $MSD_seq;
+            my $psi_status = "mutation";
+            my $classification;
+
+            $self->_check_genes( \@productive_genes, \@unproductive_genes, \$MSD_seq, \$psi_status );
+
+            $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'productive_genes' }   = join( ", ", @productive_genes );
+            $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'unproductive_genes' } = join( ", ", @unproductive_genes );
+            $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'psi_status' }         = $psi_status;
+
+            # description
+            my $non_functional_genes = 'non-functional genes:' . join ",", @unproductive_genes;
+            $self->genbank->description( $non_functional_genes );
 
             my $genes_count = 0;
             foreach my $gene ( keys %{ $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'gene_count' } } ) {
                 $genes_count += $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'gene_count' }{ $gene };
             }
 
-
             if ( $json_report_hash->{ 'passed' }{ $sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_order' } eq 'No' ) {
-                $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'output_gb_classification' } =
-                    $self->output_dir->stringify . '/duplications_or_inversion/' . $self->genbank->id . '.gb';
-
-                my $classif_extraction = $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'output_gb_classification' };
-                if ( $classif_extraction =~ /.*\/(.*)\/(.*\.gb)/ ) {
-                    $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'final_classification' } = $1;
-                }
-                return ( 0 );
+                $classification = 'duplications_or_inversion';
             }
-
-            if ( $json_report_hash->{ 'passed' }{ $sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_invertions' } eq 'Yes' and 
+            elsif ( $json_report_hash->{ 'passed' }{ $sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_invertions' } eq 'Yes' and 
                 $json_report_hash->{ 'passed' }{ $sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_ltr' } eq 'Yes') {
-                $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'output_gb_classification' } =
-                    $self->output_dir->stringify . '/duplications_or_inversion/' . $self->genbank->id . '.gb';
-
-                my $classif_extraction = $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'output_gb_classification' };
-                if ( $classif_extraction =~ /.*\/(.*)\/(.*\.gb)/ ) {
-                    $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'final_classification' } = $1;
-                }
-
-                return ( 0 );
+                $classification = 'duplications_or_inversion';
             }
-
-            if ( $json_report_hash->{ 'passed' }{ $sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_duplication' } eq 'Yes' ) {
-                $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'output_gb_classification' } =
-                    $self->output_dir->stringify . '/duplications_or_inversion/' . $self->genbank->id . '.gb';
-
-                my $classif_extraction = $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'output_gb_classification' };
-                if ( $classif_extraction =~ /.*\/(.*)\/(.*\.gb)/ ) {
-                    $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'final_classification' } = $1;
-                }
-
-                return ( 0 );
+            elsif ( $json_report_hash->{ 'passed' }{ $sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_duplication' } eq 'Yes' ) {
+                $classification = 'duplications_or_inversion';
             }
-
             # missing_ltr_or_psi classification
-            if ( ( $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_ltr' } eq "No" ) ) {
-                $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'output_gb_classification' } =
-                    $self->output_dir->stringify . '/missing_ltr_or_psi/' . $self->genbank->id . '.gb';
+            elsif ( ( $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_ltr' } eq "No" ) ) {
+                $classification = 'missing_ltr_or_psi'
             }
             else {
                 my $has_five_prime_ltr  = 0;
@@ -817,62 +804,38 @@ use File::Path 'make_path';
                     }
                 }
 
-                my @productive_genes;
-                my @unproductive_genes;
-                my $MSD_seq;
-                my $psi_status = "mutation";
-
                 if ( $has_three_prime_ltr == 0 ) {
-                    $self->_check_genes( \@productive_genes, \@unproductive_genes, \$MSD_seq, \$psi_status );
-                    $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step}{ 'output_gb_classification' } = $self->output_dir->stringify . '/missing_ltr_or_psi/' . $self->genbank->id . '.gb';
+                    $classification = 'missing_ltr_or_psi';
                 }
                 elsif ( $has_five_prime_ltr == 0 and $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step}{ 'has_psi' } eq "No" ) {
-                    $self->_check_genes( \@productive_genes, \@unproductive_genes, \$MSD_seq, \$psi_status );
-                    $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step}{ 'output_gb_classification' } = $self->output_dir->stringify . '/missing_ltr_or_psi/' . $self->genbank->id . '.gb';
+                    $classification = 'missing_ltr_or_psi';
                 }
                 else {
                     if ( $genes_count < 10 ) {
-
-                        $self->_check_genes(\@productive_genes, \@unproductive_genes, \$MSD_seq, \$psi_status);
-
-                        $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step}{ 'productive_genes' } = join(", ", @productive_genes);
-                        $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step}{ 'unproductive_genes' } = join(", ", @unproductive_genes);
-                        $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step}{ 'output_gb_classification' } = $self->output_dir->stringify . '/missing_internal_genes/' . $self->genbank->id . '.gb';
-                        $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step}{ 'psi_status' } = $psi_status;
+                        $classification = 'missing_internal_genes';
                     }
                     elsif ( $genes_count == 10 ) {
 
-                        $self->_check_genes( \@productive_genes, \@unproductive_genes, \$MSD_seq, \$psi_status );
-
-                        # description
-                        my $non_functional_genes = 'non-functional genes:' . join ",", @unproductive_genes;
-                        $self->genbank->description( $non_functional_genes );
-
                         if ( scalar @productive_genes == 9 ) {
                             if ( $psi_status eq "intact" ) {
-                                $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'output_gb_classification' } = $self->output_dir->stringify . '/intact/' . $self->genbank->id . '.gb';
+                                $classification = 'intact';
                             }
                             elsif ( $psi_status eq "mutation" ) {
-                                $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'output_gb_classification' } = $self->output_dir->stringify . '/msd_mutation/' . $self->genbank->id . '.gb';
+                                $classification = 'msd_mutation';
                             }
-
                         }
                         else {
-                            $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'output_gb_classification' } = $self->output_dir->stringify . '/non_functional/' . $self->genbank->id . '.gb';
+                            $classification = 'non_functional';
                         }
-
-                        $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'productive_genes' }   = join( ", ", @productive_genes );
-                        $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'unproductive_genes' } = join( ", ", @unproductive_genes );
-                        $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'psi_status' }         = $psi_status;
-
                     }
                     else {
                         die "MORE THAN 10 FEATURES " . $self->genbank->id;
                     }
                 }
-
             }
 
+            # Add classification
+            $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'output_gb_classification' } = $self->output_dir->stringify . '/'.$classification.'/' . $self->genbank->id . '.gb';
             my $classif_extraction = $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{ 'STEP' . $self->current_step }{ 'output_gb_classification' };
             if ( $classif_extraction =~ /.*\/(.*)\/(.*\.gb)/ ) {
                 $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'final_classification' } = $1;
