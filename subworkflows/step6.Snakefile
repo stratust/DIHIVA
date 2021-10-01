@@ -69,8 +69,6 @@ rule check_productivity:
         nonfunctional_dir=CWD+"/"+OUTPUTDIR+"/STEP6/non_functional",
         msd_mut_dir=CWD+"/"+OUTPUTDIR+"/STEP6/msd_mutation",
         missing_internal_genes_dir=CWD+"/"+OUTPUTDIR+"/STEP6/missing_internal_genes",
-        artifact_dir=CWD+"/"+OUTPUTDIR+"/STEP6/artifact",
-        weird_dir=CWD+"/"+OUTPUTDIR+"/STEP6/weird",
         output_dir=CWD+"/"+OUTPUTDIR+"/STEP6",
         json_dir=CWD+"/"+OUTPUTDIR+"/STEP6/json_samples",
         json_file=CWD+"/"+OUTPUTDIR+"/STEP6/json_samples/{sample}.json"
@@ -83,9 +81,7 @@ rule check_productivity:
             mkdir {params.intact_dir}
             mkdir {params.msd_mut_dir}
             mkdir {params.nonfunctional_dir}
-            mkdir {params.weird_dir}
             mkdir {params.missing_internal_genes_dir}
-            mkdir {params.artifact_dir}
         fi
         if [[ -e {params.genbank} ]]; then
 
