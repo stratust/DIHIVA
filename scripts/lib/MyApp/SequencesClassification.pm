@@ -704,143 +704,138 @@ use File::Path 'make_path';
 
 
     sub sequence_classification {
-
         my ( $self, $json_report_hash ) = @_;
 
-        $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step}{ 'output' } = $self->json_file->stringify;
+        my $json_report_current = $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step};
+        $json_report_current->{ 'output' } = $self->json_file->stringify;
 
-        foreach my $sample_id ( keys %{ $json_report_hash->{'passed'}} ) {
+        my @productive_genes;
+        my @unproductive_genes;
+        my $MSD_seq;
+        my $psi_status = "mutation";
+        my $classification;
 
-            my @productive_genes;
-            my @unproductive_genes;
-            my $MSD_seq;
-            my $psi_status = "mutation";
-            my $classification;
+        $self->_check_genes( \@productive_genes, \@unproductive_genes, \$MSD_seq, \$psi_status );
 
-            $self->_check_genes( \@productive_genes, \@unproductive_genes, \$MSD_seq, \$psi_status );
+        $json_report_current->{ 'productive_genes' }   = join( ", ", @productive_genes );
+        $json_report_current->{ 'unproductive_genes' } = join( ", ", @unproductive_genes );
+        $json_report_current->{ 'psi_status' }         = $psi_status;
 
-            $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'productive_genes' }   = join( ", ", @productive_genes );
-            $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'unproductive_genes' } = join( ", ", @unproductive_genes );
-            $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'psi_status' }         = $psi_status;
+        # description
+        my $non_functional_genes = 'non-functional genes:' . join ",", @unproductive_genes;
+        $self->genbank->description( $non_functional_genes );
 
-            # description
-            my $non_functional_genes = 'non-functional genes:' . join ",", @unproductive_genes;
-            $self->genbank->description( $non_functional_genes );
+        my $genes_count = 0;
+        foreach my $gene ( keys %{ $json_report_current->{ 'gene_count' } } ) {
+            $genes_count += $json_report_current->{ 'gene_count' }{ $gene };
+        }
 
-            my $genes_count = 0;
-            foreach my $gene ( keys %{ $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'gene_count' } } ) {
-                $genes_count += $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'gene_count' }{ $gene };
+        if ( $json_report_current->{ 'has_order' } eq 'No' ) {
+            $classification = 'duplications_or_inversion';
+        }
+        elsif ( $json_report_current->{ 'has_invertions' } eq 'Yes' and $json_report_current->{ 'has_ltr' } eq 'Yes') {
+            $classification = 'duplications_or_inversion';
+        }
+        elsif ( $json_report_current->{ 'has_duplication' } eq 'Yes' ) {
+            $classification = 'duplications_or_inversion';
+        }
+        # missing_ltr_or_psi classification
+        elsif ( ( $json_report_current->{ 'has_ltr' } eq "No" ) ) {
+            $classification = 'missing_ltr_or_psi'
+        }
+        else {
+            my $has_five_prime_ltr  = 0;
+            my $has_three_prime_ltr = 0;
+
+            my @found_ltrs      = @{ $json_report_current->{ 'ltr' } };
+            my @ltr_five_prime  = grep { /^5/ } @found_ltrs;
+            my @ltr_three_prime = grep { /^3/ } @found_ltrs;
+
+            if ( scalar @ltr_five_prime > 0 ) {
+                foreach my $mapped_ltr ( @ltr_five_prime ) {
+                    my $ltr_start = $mapped_ltr;
+                    my $ltr_end   = $mapped_ltr;
+                    my $ltr_size  = $mapped_ltr;
+
+                    if ( $ltr_start =~ /.*start_(\d+)_.*/ ) {
+                        $ltr_start = $1;
+                    }
+
+                    if ( $ltr_end =~ /.*_end_(\d+)_.*/ ) {
+                        $ltr_end = $1;
+                    }
+
+                    if ( $ltr_size =~ /.*size_(\d+)$/ ) {
+                        $ltr_size = $1;
+                    }
+
+                    if ( $ltr_start <= 100 ) {
+                        $has_five_prime_ltr = 1;
+                    }
+
+                }
             }
 
-            if ( $json_report_hash->{ 'passed' }{ $sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_order' } eq 'No' ) {
-                $classification = 'duplications_or_inversion';
+            if ( scalar @ltr_three_prime > 0 ) {
+                foreach my $mapped_ltr ( @ltr_three_prime ) {
+                    my $ltr_start = $mapped_ltr;
+                    my $ltr_end   = $mapped_ltr;
+                    my $ltr_size  = $mapped_ltr;
+
+                    if ( $ltr_start =~ /.*start_(\d+)_.*/ ) {
+                        $ltr_start = $1;
+                    }
+
+                    if ( $ltr_end =~ /.*_end_(\d+)_.*/ ) {
+                        $ltr_end = $1;
+                    }
+
+                    if ( $ltr_size =~ /.*size_(\d+)$/ ) {
+                        $ltr_size = $1;
+                    }
+
+                    if ( $ltr_end >= ( $self->genbank->length - 100 ) ) {
+                        $has_three_prime_ltr = 1;
+                    }
+
+                }
             }
-            elsif ( $json_report_hash->{ 'passed' }{ $sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_invertions' } eq 'Yes' and 
-                $json_report_hash->{ 'passed' }{ $sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_ltr' } eq 'Yes') {
-                $classification = 'duplications_or_inversion';
+
+            if ( $has_three_prime_ltr == 0 ) {
+                $classification = 'missing_ltr_or_psi';
             }
-            elsif ( $json_report_hash->{ 'passed' }{ $sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_duplication' } eq 'Yes' ) {
-                $classification = 'duplications_or_inversion';
-            }
-            # missing_ltr_or_psi classification
-            elsif ( ( $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'has_ltr' } eq "No" ) ) {
-                $classification = 'missing_ltr_or_psi'
+            elsif ( $has_five_prime_ltr == 0 and $json_report_current->{ 'has_psi' } eq "No" ) {
+                $classification = 'missing_ltr_or_psi';
             }
             else {
-                my $has_five_prime_ltr  = 0;
-                my $has_three_prime_ltr = 0;
-
-                my @found_ltrs      = @{ $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step}{ 'ltr' } };
-                my @ltr_five_prime  = grep { /^5/ } @found_ltrs;
-                my @ltr_three_prime = grep { /^3/ } @found_ltrs;
-
-                if ( scalar @ltr_five_prime > 0 ) {
-                    foreach my $mapped_ltr ( @ltr_five_prime ) {
-                        my $ltr_start = $mapped_ltr;
-                        my $ltr_end   = $mapped_ltr;
-                        my $ltr_size  = $mapped_ltr;
-
-                        if ( $ltr_start =~ /.*start_(\d+)_.*/ ) {
-                            $ltr_start = $1;
-                        }
-
-                        if ( $ltr_end =~ /.*_end_(\d+)_.*/ ) {
-                            $ltr_end = $1;
-                        }
-
-                        if ( $ltr_size =~ /.*size_(\d+)$/ ) {
-                            $ltr_size = $1;
-                        }
-
-                        if ( $ltr_start <= 100 ) {
-                            $has_five_prime_ltr = 1;
-                        }
-
-                    }
+                if ( $genes_count < 10 ) {
+                    $classification = 'missing_internal_genes';
                 }
+                elsif ( $genes_count == 10 ) {
 
-                if ( scalar @ltr_three_prime > 0 ) {
-                    foreach my $mapped_ltr ( @ltr_three_prime ) {
-                        my $ltr_start = $mapped_ltr;
-                        my $ltr_end   = $mapped_ltr;
-                        my $ltr_size  = $mapped_ltr;
-
-                        if ( $ltr_start =~ /.*start_(\d+)_.*/ ) {
-                            $ltr_start = $1;
+                    if ( scalar @productive_genes == 9 ) {
+                        if ( $psi_status eq "intact" ) {
+                            $classification = 'intact';
                         }
-
-                        if ( $ltr_end =~ /.*_end_(\d+)_.*/ ) {
-                            $ltr_end = $1;
-                        }
-
-                        if ( $ltr_size =~ /.*size_(\d+)$/ ) {
-                            $ltr_size = $1;
-                        }
-
-                        if ( $ltr_end >= ( $self->genbank->length - 100 ) ) {
-                            $has_three_prime_ltr = 1;
-                        }
-
-                    }
-                }
-
-                if ( $has_three_prime_ltr == 0 ) {
-                    $classification = 'missing_ltr_or_psi';
-                }
-                elsif ( $has_five_prime_ltr == 0 and $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{'STEP'.$self->current_step}{ 'has_psi' } eq "No" ) {
-                    $classification = 'missing_ltr_or_psi';
-                }
-                else {
-                    if ( $genes_count < 10 ) {
-                        $classification = 'missing_internal_genes';
-                    }
-                    elsif ( $genes_count == 10 ) {
-
-                        if ( scalar @productive_genes == 9 ) {
-                            if ( $psi_status eq "intact" ) {
-                                $classification = 'intact';
-                            }
-                            elsif ( $psi_status eq "mutation" ) {
-                                $classification = 'msd_mutation';
-                            }
-                        }
-                        else {
-                            $classification = 'non_functional';
+                        elsif ( $psi_status eq "mutation" ) {
+                            $classification = 'msd_mutation';
                         }
                     }
                     else {
-                        die "MORE THAN 10 FEATURES " . $self->genbank->id;
+                        $classification = 'non_functional';
                     }
                 }
+                else {
+                    die "MORE THAN 10 FEATURES " . $self->genbank->id;
+                }
             }
+        }
 
-            # Add classification
-            $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'output_gb_classification' } = $self->output_dir->stringify . '/'.$classification.'/' . $self->genbank->id . '.gb';
-            my $classif_extraction = $json_report_hash->{'passed'}{ $self->sample_id }{$self->file_id}{ 'STEP' . $self->current_step }{ 'output_gb_classification' };
-            if ( $classif_extraction =~ /.*\/(.*)\/(.*\.gb)/ ) {
-                $json_report_hash->{ 'passed' }{ $self->sample_id }{ $self->file_id }{ 'STEP' . $self->current_step }{ 'final_classification' } = $1;
-            }
-
+        # Add classification
+        $json_report_current->{ 'output_gb_classification' } = $self->output_dir->stringify . '/'.$classification.'/' . $self->genbank->id . '.gb';
+        my $classif_extraction = $json_report_current->{ 'output_gb_classification' };
+        if ( $classif_extraction =~ /.*\/(.*)\/(.*\.gb)/ ) {
+            $json_report_current->{ 'final_classification' } = $1;
         }
     }
 
