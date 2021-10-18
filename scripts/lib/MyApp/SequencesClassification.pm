@@ -731,17 +731,21 @@ use File::Path 'make_path';
         }
 
         if ( $json_report_current->{ 'has_order' } eq 'No' ) {
-            $classification = 'duplications_or_inversion';
+            $classification = 'structural_variations';
         }
-        elsif ( $json_report_current->{ 'has_invertions' } eq 'Yes' and $json_report_current->{ 'has_ltr' } eq 'Yes') {
-            $classification = 'duplications_or_inversion';
+        elsif ( 
+            $json_report_current->{ 'has_invertions' } eq 'Yes' and 
+            $json_report_current->{ 'has_ltr' } eq 'Yes' and 
+            scalar @productive_genes < 9 ) 
+        {
+            $classification = 'structural_variations';
         }
-        elsif ( $json_report_current->{ 'has_duplication' } eq 'Yes' ) {
-            $classification = 'duplications_or_inversion';
+        elsif ( $json_report_current->{ 'has_duplication' } eq 'Yes' and scalar @productive_genes < 9 ) {
+            $classification = 'structural_variations';
         }
         # missing_ltr_or_psi classification
         elsif ( ( $json_report_current->{ 'has_ltr' } eq "No" ) ) {
-            $classification = 'missing_ltr_or_psi'
+            $classification = 'missing_ltr_or_psi';
         }
         else {
             my $has_five_prime_ltr  = 0;
@@ -825,8 +829,18 @@ use File::Path 'make_path';
                         $classification = 'non_functional';
                     }
                 }
-                else {
-                    die "MORE THAN 10 FEATURES " . $self->genbank->id;
+                elsif ( $genes_count > 10 )  {
+                    if ( scalar @productive_genes == 9 ) {
+                        if ( $psi_status eq "intact" ) {
+                            $classification = 'intact';
+                        }
+                        elsif ( $psi_status eq "mutation" ) {
+                            $classification = 'msd_mutation';
+                        }
+                    }
+                    else {
+                        $classification = 'non_functional';
+                    }
                 }
             }
         }
