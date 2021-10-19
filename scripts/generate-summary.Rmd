@@ -67,7 +67,7 @@ all.seq.table$chosen = NULL
 
 ```{r donut_chart_one, echo=FALSE}
 colors <- c(GOOD = 'rgb(0,128,255)', BAD = 'rgb(204,0,0)', `EMPTY WELL` = 'rgb(255,255,255)', PROBLEMS_IN_ASSEMBLY = 'rgb(102,0,0)')
-colors_classif <- c(non_functional = 'rgb(255,255,255)', missing_ltr_or_psi = 'rgb(204,0,0)', intact = 'rgb(0,153,0)', msd_mutation = 'rgb(255,128,0)', duplications_or_inversion = 'rgb(153,41,255)', missing_internal_genes = 'rgb(160,160,160)')
+colors_classif <- c(non_functional = 'rgb(255,255,255)', missing_ltr_or_psi = 'rgb(204,0,0)', intact = 'rgb(0,153,0)', msd_mutation = 'rgb(255,128,0)', structural_variations = 'rgb(153,41,255)', missing_internal_genes = 'rgb(160,160,160)')
 
 data1 <- all.seq.table %>%
   group_by(classification) %>%

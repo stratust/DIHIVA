@@ -125,7 +125,7 @@ sub choose_representative_file {
     }
 
     #chose if there is more than one file per sample
-    my @classif_priorities = ( 'intact', 'msd_mutation', 'non_functional', 'duplications_or_inversion', 'missing_internal_genes', 'missing_ltr_or_psi', 'BAD', 'problems_in_assembly' , 'EMPTY WELL STEP1', 'EMPTY WELL STEP0' );
+    my @classif_priorities = ( 'intact', 'msd_mutation', 'non_functional', 'structural_variations', 'missing_internal_genes', 'missing_ltr_or_psi', 'BAD', 'problems_in_assembly' , 'EMPTY WELL STEP1', 'EMPTY WELL STEP0' );
     foreach my $sample_hash ( sort { $a cmp $b } keys %aux_hash ) {
 
         foreach my $classif ( @classif_priorities ) {

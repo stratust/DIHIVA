@@ -41,7 +41,7 @@ sub select_genbank {
     my @samples;
     my $ref_classif;
     my %final_json;
-    my @classif_priorities = ('intact', 'msd_mutation', 'non_functional', 'duplications_or_inversion', 'missing_internal_genes', 'missing_ltr_or_psi');
+    my @classif_priorities = ('intact', 'msd_mutation', 'non_functional', 'structural_variations', 'missing_internal_genes', 'missing_ltr_or_psi');
     @samples = keys %{$json_step6_ref->{'passed'}};
 
     foreach my $sample (@samples) {
